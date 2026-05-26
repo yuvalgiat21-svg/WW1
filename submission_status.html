@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>סטטוס הגשות וציונים</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Segoe UI',Arial,sans-serif; direction:rtl; background:#F4F7FB; color:#1a1a2e; font-size:11px; }
+
+.pw-screen { max-width:340px; margin:4rem auto; background:#fff; border-radius:12px; padding:1.5rem; box-shadow:0 4px 20px rgba(0,0,0,.1); text-align:center; }
+.pw-input { width:100%; padding:8px 12px; border:1.5px solid #D0DDE8; border-radius:7px; font-size:13px; direction:rtl; outline:none; margin-bottom:.6rem; font-family:inherit; }
+.pw-btn { width:100%; padding:9px; background:#1F4E79; color:#fff; border:none; border-radius:7px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+.pw-err { color:#DC2626; font-size:11px; margin-top:.4rem; }
+
+.top-bar { background:#1F4E79; color:#fff; padding:8px 16px; display:flex; align-items:center; justify-content:space-between; }
+.top-title { font-size:13px; font-weight:700; }
+.top-sub { font-size:10px; opacity:.7; }
+
+.main-tabs { background:#fff; border-bottom:2px solid #E0E8F0; padding:0 16px; display:flex; gap:2px; }
+.main-tab { padding:8px 16px; font-family:inherit; font-size:12px; font-weight:700; color:#888; background:none; border:none; border-bottom:3px solid transparent; margin-bottom:-2px; cursor:pointer; }
+.main-tab.active { color:#1F4E79; border-bottom-color:#1F4E79; }
+
+.cls-tabs { background:#F7FAFD; border-bottom:1px solid #E0E8F0; padding:0 16px; display:flex; gap:2px; }
+.cls-tab { padding:6px 14px; font-family:inherit; font-size:11px; font-weight:700; color:#888; background:none; border:none; border-bottom:2px solid transparent; margin-bottom:-1px; cursor:pointer; }
+.cls-tab.active { color:#1F4E79; border-bottom-color:#2E75B6; }
+
+.main-panel { display:none; padding:10px 16px; }
+.main-panel.active { display:block; }
+.cls-panel { display:none; padding:8px 0; }
+.cls-panel.active { display:block; }
+
+.stats-bar { display:flex; gap:6px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+.stat-pill { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+.pill-all { background:#E6F1FB; color:#1F4E79; }
+.pill-yes { background:#D1FAE5; color:#065F46; }
+.pill-no  { background:#FEF3C7; color:#92400E; }
+.pill-avg { background:#EDE9FE; color:#5B21B6; }
+.pbar { flex:1; min-width:100px; background:#E0E8F0; border-radius:20px; height:6px; overflow:hidden; }
+.pbar-fill { background:linear-gradient(90deg,#059669,#34d399); height:100%; border-radius:20px; }
+.pct { font-size:11px; font-weight:700; color:#059669; }
+
+table { width:100%; border-collapse:collapse; background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+th { background:#EEF6FF; color:#1F4E79; padding:6px 8px; text-align:right; font-weight:700; font-size:10.5px; border-bottom:1.5px solid #C5DAEA; }
+td { padding:5px 8px; border-bottom:1px solid #F0F4F8; vertical-align:middle; line-height:1.3; }
+tr:last-child td { border-bottom:none; }
+.sec-head td { background:#F0FDF4; color:#065F46; font-weight:700; font-size:10px; padding:4px 8px; }
+.sec-head.no td { background:#FFFBEB; color:#92400E; }
+
+.s-yes { background:#D1FAE5; color:#065F46; border-radius:4px; padding:1px 6px; font-weight:700; font-size:10px; }
+.s-no  { background:#FEF3C7; color:#92400E; border-radius:4px; padding:1px 6px; font-weight:700; font-size:10px; }
+.task-n { color:#1F4E79; font-weight:700; font-size:10.5px; }
+.task-name { color:#333; font-size:10.5px; font-weight:600; }
+.members { color:#555; font-size:10px; }
+.date-c { color:#aaa; font-size:9.5px; white-space:nowrap; }
+.grade-badge { display:inline-block; border-radius:6px; padding:2px 8px; font-weight:700; font-size:11px; }
+.grade-high { background:#EDE9FE; color:#5B21B6; }
+.grade-mid  { background:#FEF3C7; color:#92400E; }
+.grade-low  { background:#FEE2E2; color:#DC2626; }
+.note-cell { color:#555; font-size:9.5px; max-width:220px; line-height:1.4; }
+.note-input { border:1px solid #D0DDE8; border-radius:5px; padding:3px 7px; font-size:10px; font-family:inherit; direction:rtl; outline:none; width:130px; }
+.note-input:focus { border-color:#2E75B6; }
+.note-input.has-note { background:#FFFBEB; border-color:#F59E0B; }
+.mark-btn { padding:3px 8px; border:none; border-radius:5px; font-size:10px; font-weight:600; cursor:pointer; font-family:inherit; }
+.do-mark { background:#1F4E79; color:#fff; }
+.do-undo { background:#FEE2E2; color:#DC2626; border:1px solid rgba(220,38,38,.2); }
+
+/* Grades dashboard */
+.grade-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; margin-top:8px; }
+.grade-card { background:#fff; border-radius:10px; padding:12px 14px; box-shadow:0 1px 4px rgba(0,0,0,.07); border-right:4px solid #2E75B6; }
+.grade-card-topic { font-size:11.5px; font-weight:700; color:#1F4E79; margin-bottom:2px; }
+.grade-card-names { font-size:10px; color:#888; margin-bottom:6px; }
+.grade-card-bottom { display:flex; align-items:center; justify-content:space-between; }
+.grade-card-score { font-size:22px; font-weight:800; }
+.grade-card-note { font-size:9.5px; color:#666; line-height:1.4; max-width:160px; }
+.rubric-box { background:#fff; border-radius:10px; padding:12px 14px; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:12px; font-size:11px; }
+.rubric-row { display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #F0F4F8; }
+.rubric-row:last-child { border-bottom:none; }
+
+.toast { position:fixed; bottom:16px; right:50%; transform:translateX(50%) translateY(60px); background:#059669; color:#fff; border-radius:8px; padding:8px 18px; font-size:12px; font-weight:600; transition:transform .3s; z-index:999; }
+.toast.show { transform:translateX(50%) translateY(0); }
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<div id="pw-screen" class="pw-screen">
+  <div style="font-size:28px;margin-bottom:.4rem">📋</div>
+  <div style="font-size:15px;font-weight:700;color:#1F4E79;margin-bottom:.5rem">סטטוס הגשות וציונים</div>
+  <input class="pw-input" type="password" id="pw-input" placeholder="סיסמת מורה..." onkeydown="if(event.key==='Enter')checkPw()">
+  <button class="pw-btn" onclick="checkPw()">כניסה</button>
+  <div class="pw-err" id="pw-err"></div>
+</div>
+
+<div id="app" style="display:none">
+  <div class="top-bar">
+    <div class="top-title">📋 סטטוס הגשות וציונים – מלחמת העולם הראשונה</div>
+    <div class="top-sub" id="updated-time"></div>
+  </div>
+
+  <div class="main-tabs">
+    <button class="main-tab active" onclick="switchMain(this,'panel-status')">📋 סטטוס הגשות</button>
+    <button class="main-tab" onclick="switchMain(this,'panel-grades')">📊 לוח ציונים</button>
+  </div>
+
+  <!-- STATUS PANEL -->
+  <div class="main-panel active" id="panel-status">
+    <div class="cls-tabs">
+      <button class="cls-tab active" data-cls="ט' 2" onclick="switchCls(this,'status')">ט׳2</button>
+      <button class="cls-tab" data-cls="ט' 6" onclick="switchCls(this,'status')">ט׳6</button>
+      <button class="cls-tab" data-cls="ט' 7" onclick="switchCls(this,'status')">ט׳7</button>
+      <button class="cls-tab" data-cls="ט' 8" onclick="switchCls(this,'status')">ט׳8</button>
+    </div>
+    <div class="cls-panel active" id="status-t2"></div>
+    <div class="cls-panel" id="status-t6"></div>
+    <div class="cls-panel" id="status-t7"></div>
+    <div class="cls-panel" id="status-t8"></div>
+  </div>
+
+  <!-- GRADES PANEL -->
+  <div class="main-panel" id="panel-grades">
+    <div class="cls-tabs">
+      <button class="cls-tab active" data-cls="ט' 2" onclick="switchCls(this,'grades')">ט׳2</button>
+      <button class="cls-tab" data-cls="ט' 6" onclick="switchCls(this,'grades')">ט׳6</button>
+      <button class="cls-tab" data-cls="ט' 7" onclick="switchCls(this,'grades')">ט׳7</button>
+      <button class="cls-tab" data-cls="ט' 8" onclick="switchCls(this,'grades')">ט׳8</button>
+      <button class="cls-tab" data-cls="all" onclick="switchCls(this,'grades')">🔢 מחוון</button>
+    </div>
+    <div class="cls-panel active" id="grades-t2"></div>
+    <div class="cls-panel" id="grades-t6"></div>
+    <div class="cls-panel" id="grades-t7"></div>
+    <div class="cls-panel" id="grades-t8"></div>
+    <div class="cls-panel" id="grades-all"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const TEACHER_PASS = 'yuval2104';
+firebase.initializeApp({
+  apiKey:"AIzaSyA8rBrBp_CJ5QQxoAML4WvR8_zOTwDRGC4",
+  databaseURL:"https://civics-hub-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"civics-hub"
+});
+const db = firebase.database();
+
+const CLASSES = ["ט' 2","ט' 6","ט' 7","ט' 8"];
+const CLS_KEY = {"ט' 2":"t2","ט' 6":"t6","ט' 7":"t7","ט' 8":"t8"};
+const STATUS_PANEL = {"ט' 2":"status-t2","ט' 6":"status-t6","ט' 7":"status-t7","ט' 8":"status-t8"};
+const GRADES_PANEL = {"ט' 2":"grades-t2","ט' 6":"grades-t6","ט' 7":"grades-t7","ט' 8":"grades-t8","all":"grades-all"};
+const TASKS = {1:"🔥 הגורמים לפרוץ המלחמה",2:"🪖 מלחמת החפירות",3:"⚙️ מהפכת הנשק",4:"👩 נשים במלחמה",5:"🌙 האימפריה העות'מאנית",6:"📢 תעמולה ומניפולציה",7:"🗽 ארצות הברית",8:"📜 הסכם ורסאי",9:"🏠 עורף המלחמה",10:"🌨️ החזית המזרחית",11:"✡️ הגנוסייד הארמני",12:"⚔️ הקרבות הגדולים",13:"🌍 מורשת המלחמה",14:"⚽ פסקת האש",15:"✈️ הברון האדום",16:"✡️ הגדודים העבריים",17:"🗺️ סייקס-פיקו",18:"🐪 לורנס",19:"🛡️ המצאת הטנק",20:"🔐 מברק צימרמן",21:"☁️ לוחמה כימית",22:"🚢 הלוסיטניה",23:"🦠 השפעת הספרדית"};
+
+// Grades data
+const GRADES_DATA = {
+  "t2": [
+    {topic:"הגורמים לפרוץ המלחמה",names:"גוני לביא, מתן דהן, עומרי אפשטיין",grade:82,note:"הבנה טובה של M.A.I.N ואפקט הבריתות. שרשרת יולי ברורה. יש לחזק ביסוס היסטורי ולהרחיב את פסקת העמדה."},
+    {topic:"מלחמת החפירות",names:"דניאל ארבל, יהל ברנר",grade:85,note:"תיאור מפורט של חיי השוחות. יומן חייל אמין. יש להוסיף ניתוח Shell Shock ופסקת עמדה."},
+    {topic:"האימפריה העות׳מאנית",names:"איתי דיל, עומרי נסטל, אחמד טאהא",grade:75,note:"השלמה נדרשת. יש לוודא כיסוי מניעי הכניסה, בלפור וירושת הקריסה."},
+    {topic:"תעמולה ומניפולציה",names:"ליבי גולדצוויג, מיכאלה פרקש, ירדן ליאון",grade:75,note:"השלמה נדרשת. יש לוודא ניתוח פוסטרים משני צדדים ועמדה ביקורתית."},
+    {topic:"ארצות הברית נכנסת",names:"מאיה ראובני, מיאל ירוזלסקי",grade:75,note:"השלמה נדרשת. יש לוודא מברק צימרמן, 14 הנקודות וציר הזמן."},
+    {topic:"הסכם ורסאי",names:"עומר פולמן, איתי ברמן, תום אלוש",grade:75,note:"השלמה נדרשת. יש לוודא סעיף 231 ומיתוס הדקירה בגב."},
+    {topic:"הסכם סייקס-פיקו",names:"דביר מעוז, נדב כוכבי",grade:83,note:"מפת החלוקה ברורה, ההבטחות הסותרות מוצגות היטב. יש להרחיב פסקת עמדה."},
+    {topic:"הגנוסייד הארמני",names:"הילה שגב, שירה לב, מעיין לב",grade:86,note:"ניתוח מנגנון ברור. גישה אנושית ומכבדת. יש לכלול עדות ניצול ישירה."},
+    {topic:"הקרבות הגדולים",names:"זיו וייס, יאיר מזרחי, עמית עמיאל",grade:75,note:"השלמה נדרשת. יש לוודא ניתוח שלושת הקרבות עם נתונים ספציפיים."},
+    {topic:"הגדודים העבריים",names:"נויה מרדו, אופיר אהרונוב, אלה פרץ",grade:75,note:"השלמה נדרשת. יש לוודא ניתוח ז׳בוטינסקי, טרומפלדור וקשר לבלפור."},
+    {topic:"המצאת הטנק",names:"יערה קתאלי, תהל כהן",grade:79,note:"הבנה טובה של שלבי הפיתוח. קמברה קצר. יש לחזק פרדוקס עם נתונים."},
+    {topic:"נשים במלחמה",names:"נועה אילן, נועה שנער, שחר טוילי",grade:90,note:"עבודה מקיפה ומאוזנת. ניתוח מארי קירי מעמיק. פסקת עמדה ביקורתית חזקה."},
+    {topic:"פסקת האש של חג המולד",names:"יערה יזהר",grade:88,note:"ניתוח מכתבים עמוק. הדה-הומניזציה מיושמת נכון. רפלקציה אישית כנה ומשכנעת."},
+  ],
+  "t6": [
+    {topic:"הגורמים לפרוץ המלחמה",names:"עדו אסולין, הלי האגמאייר, שחר חיימזון",grade:95,note:"מצגת ברמה גבוהה מאוד. הבחנה עילה-סיבה חוזק בולט. שחזור משבר יולי מעמיק מאוד."},
+    {topic:"מלחמת החפירות",names:"נבו שץ, שיילו רז",grade:84,note:"מבנה החפירות מפורט. יומן חייל מרגש. יש לחזק ניתוח ביקורתי עם דוגמאות היסטוריות."},
+    {topic:"הקרבות הגדולים",names:"גאיה פרופטה, שקד אורון, קמה שלף",grade:91,note:"ניתוח הסום חד וביקורתי. גליפולי כסמל לאומי – מקורי. פסקת עמדה על השחיקה מצוינת."},
+    {topic:"ארצות הברית נכנסת",names:"נגה ראובני, נגה עשור",grade:87,note:"מצגת ברורה. כל הנושאים מכוסים. יש להרחיב: אינטרסים מול אידיאליזם?"},
+    {topic:"טביעת הלוסיטניה",names:"רוני לאובשטיין, שחר אלירז, מאיה קליינר",grade:80,note:"כיסוי מקיף. יש לחזק ניתוח ביקורתי ולקשר לעידן העכשווי."},
+    {topic:"המצאת הטנק",names:"סתיו מקובסקי, מאור ג׳אנה",grade:83,note:"מצגת מעניינת. ניתוח האירוניה של החשאיות חד. יש לקחת עמדה: קיצר או האריך?"},
+  ],
+  "t7": [
+    {topic:"לוחמה כימית ופריץ האבר",names:"נאיה גל, תמר עקיבא, נועם פלג חיים, איילה בנדיק",grade:92,note:"מצגת מרשימה. פרדוקס האבר עמוק ומאוזן. מרוץ החימוש מוסבר היטב. מקורות איכותיים."},
+    {topic:"החזית המזרחית",names:"אביגיל עזר",grade:78,note:"הוגש כצילום בלבד. ניתוח סטאלינגרד, המהפכה וברסט-ליטובסק. יש להגיש כקובץ מלא."},
+    {topic:"טביעת הלוסיטניה",names:"אברהם ג׳אן, אביחי גרינברג",grade:80,note:"ניתוח הטענה הגרמנית ביחס לציוד – ביקורתי ומבוסס. יש להרחיב פסקת עמדה ביקורתית."},
+    {topic:"המגיפה הספרדית",names:"יהל פרשקר, אלון גורן, עתי רוזמן",grade:86,note:"עבודה מקיפה. קשר מלחמה-מגיפה ברור. שלושת הגלים מדויק. השוואה לקורונה מעניינת."},
+    {topic:"המצאת הטנק",names:"עדי גרינברג, מעיין גפן, זיו רום",grade:75,note:"השלמה נדרשת. יש לוודא ניתוח קמברה ועמדה ברורה: קיצר או האריך את המלחמה?"},
+  ],
+  "t8": [
+    {topic:"האימפריה העות׳מאנית",names:"עלמה אשכנזי, עלמה בלרשטיין",grade:91,note:"ניתוח מניעי הכניסה מפורט. ניתוח בלפור ביקורתי. קשר לסכסוכים עכשוויים מצוין."},
+    {topic:"ארצות הברית נכנסת",names:"אריאל רטפן, יהב רוטרי",grade:81,note:"כיסוי הניטרליות ומברק צימרמן טוב. יש להרחיב 14 הנקודות ועמדה ביקורתית."},
+    {topic:"הברון האדום",names:"קורן עמית ניב",grade:79,note:"ביוגרפיה ברורה. קרב האוויר מפורט. יש לנתח פרדוקס הגיבור הרומנטי במלחמה אכזרית."},
+    {topic:"הגנוסייד הארמני",names:"נועה לוי",grade:93,note:"ניתוח מנגנון מדויק שלב-שלב. עדות ניצולה ברגישות. עמדת ישראל – מורכבת ואמיצה."},
+    {topic:"הסכם סייקס-פיקו",names:"עמרי דנאל, יאיר פולינר, אדם פנחס",grade:85,note:"ניתוח מפת החלוקה ופיצול הכורדים מצוין. יש לחזק ניתוח ההבטחות הסותרות."},
+    {topic:"פסקת האש של חג המולד",names:"תמר שקולניק",grade:89,note:"ניתוח עדויות קפדני. ניתוח פסיכולוגי-סוציולוגי מעמיק. עבודה מסודרת וראויה."},
+    {topic:"לוחמה כימית ופריץ האבר",names:"עידן ליפשיץ, ליבי ענבר, שחר בר נתן",grade:82,note:"פרדוקס האבר ברור. יש להרחיב דיון מוסרי ולהוסיף עמדה ביקורתית אישית."},
+    {topic:"נשים במלחמה",names:"אלמוג ניסן, מאיה ליבנה",grade:85,note:"ניתוח מארי קירי ורנטגן נייד. השוואה בריטניה-גרמניה מפורטת. יש לחזק עמדה ביקורתית."},
+    {topic:"עורף המלחמה",names:"שחר בנדלר",grade:87,note:"יום בחיי אזרח גרמני – אנושי ומרגש. חורף הלפת מבוסס. קשר עורף-הפסד מחודד."},
+  ]
+};
+
+let regs={}, subs={}, teacherNotes={};
+let currentStatusCls = "ט' 2";
+let currentGradesCls = "ט' 2";
+
+function toast(msg,c){const el=document.getElementById('toast');el.textContent=msg;el.style.background=c||'#059669';el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200);}
+
+function checkPw(){
+  if(document.getElementById('pw-input').value===TEACHER_PASS){
+    document.getElementById('pw-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    startListeners();
+  } else document.getElementById('pw-err').textContent='סיסמה שגויה';
+}
+
+function switchMain(btn, panelId) {
+  document.querySelectorAll('.main-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.main-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+}
+
+function switchCls(btn, mode) {
+  const parent = btn.closest('.main-panel') || btn.closest('#app');
+  parent.querySelectorAll('.cls-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const cls = btn.dataset.cls;
+  if (mode === 'status') {
+    document.querySelectorAll('[id^="status-"]').forEach(p=>p.classList.remove('active'));
+    const key = CLS_KEY[cls] || cls;
+    document.getElementById('status-' + key)?.classList.add('active');
+    currentStatusCls = cls;
+  } else {
+    document.querySelectorAll('[id^="grades-"]').forEach(p=>p.classList.remove('active'));
+    const key = CLS_KEY[cls] || cls;
+    document.getElementById('grades-' + key)?.classList.add('active');
+    currentGradesCls = cls;
+    renderGradesCls(cls);
+  }
+}
+
+function startListeners(){
+  db.ref('ww1_registrations').on('value',snap=>{
+    const raw=snap.val()||{};regs={};
+    for(const[k,v]of Object.entries(raw)){
+      if(Array.isArray(v)){regs[k]={};v.forEach((item,i)=>{if(item)regs[k][String(i)]=item;});}
+      else{regs[k]={};for(const[tn,val]of Object.entries(v||{}))regs[k][String(tn)]=val;}
+    }
+    render();
+  });
+  db.ref('ww1_submissions').on('value',snap=>{subs=snap.val()||{};render();});
+  db.ref('ww1_teacher_notes').on('value',snap=>{teacherNotes=snap.val()||{};render();});
+}
+
+function render(){
+  document.getElementById('updated-time').textContent='עודכן: '+new Date().toLocaleString('he-IL');
+  CLASSES.forEach(cls=>renderStatusCls(cls));
+  renderGradesCls(currentGradesCls);
+}
+
+function renderStatusCls(cls){
+  const clsKey=CLS_KEY[cls];
+  const el=document.getElementById('status-'+clsKey);
+  if(!el)return;
+  const allEntries=Object.entries(regs[clsKey]||{}).filter(([k])=>!isNaN(parseInt(k))).sort((a,b)=>parseInt(a[0])-parseInt(b[0]));
+  if(!allEntries.length){el.innerHTML='<div style="padding:2rem;text-align:center;color:#aaa">אין שיבוצים</div>';return;}
+  const submitted=allEntries.filter(([tn])=>subs[clsKey+'_'+tn]);
+  const notSub=allEntries.filter(([tn])=>!subs[clsKey+'_'+tn]);
+  const pct=Math.round(submitted.length/allEntries.length*100);
+
+  let html=`<div class="stats-bar">
+    <span class="stat-pill pill-all">${allEntries.length} קבוצות</span>
+    <span class="stat-pill pill-yes">✅ ${submitted.length}</span>
+    <span class="stat-pill pill-no">⏳ ${notSub.length}</span>
+    <div class="pbar"><div class="pbar-fill" style="width:${pct}%"></div></div>
+    <span class="pct">${pct}%</span>
+  </div>
+  <table>
+    <thead><tr><th>#</th><th>מטלה</th><th>קבוצה</th><th>סטטוס</th><th>תאריך</th><th>הערת מורה</th><th></th></tr></thead>
+    <tbody>`;
+
+  if(submitted.length){
+    html+=`<tr class="sec-head"><td colspan="7">✅ הגישו (${submitted.length})</td></tr>`;
+    html+=submitted.map(([tn,reg])=>buildStatusRow(tn,reg,clsKey,cls,true)).join('');
+  }
+  if(notSub.length){
+    html+=`<tr class="sec-head no"><td colspan="7">⏳ טרם הגישו (${notSub.length})</td></tr>`;
+    html+=notSub.map(([tn,reg])=>buildStatusRow(tn,reg,clsKey,cls,false)).join('');
+  }
+  html+=`</tbody></table>`;
+  el.innerHTML=html;
+  bindStatusButtons(el);
+}
+
+function buildStatusRow(tn,reg,clsKey,cls,hasSub){
+  const subKey=clsKey+'_'+tn;
+  const sub=subs[subKey];
+  const members=(reg.members||[]).map(m=>m.name).join(', ');
+  const taskName=TASKS[parseInt(tn)]||'מטלה '+tn;
+  const noteKey=clsKey+'_'+tn;
+  const existingNote=teacherNotes[noteKey]||'';
+  const noteCell=hasSub
+    ?`<span style="color:#aaa;font-size:9.5px">${existingNote||'—'}</span>`
+    :`<div style="display:flex;align-items:center;gap:4px">
+        <input class="note-input${existingNote?' has-note':''}" id="ni-${noteKey}" data-notekey="${noteKey}"
+          value="${existingNote.replace(/"/g,'&quot;')}" placeholder="הוסף הערה..."
+          onblur="saveNote(this)" onkeydown="if(event.key==='Enter')this.blur()">
+        ${existingNote?`<button onclick="clearNote('${noteKey}')" style="background:#FEE2E2;border:none;color:#DC2626;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer">✕</button>`:''}
+      </div>`;
+  const btn=hasSub
+    ?`<button class="mark-btn do-undo" data-action="undo" data-key="${subKey}">↩</button>`
+    :`<button class="mark-btn do-mark" data-action="mark" data-key="${subKey}" data-cls="${cls}" data-tn="${tn}">✅</button>`;
+  return`<tr>
+    <td class="task-n">${tn}</td>
+    <td class="task-name">${taskName}</td>
+    <td class="members">${members}</td>
+    <td>${hasSub?'<span class="s-yes">הוגש</span>':'<span class="s-no">לא הוגש</span>'}</td>
+    <td class="date-c">${sub?.timestamp||'—'}</td>
+    <td>${noteCell}</td>
+    <td>${btn}</td>
+  </tr>`;
+}
+
+function bindStatusButtons(container){
+  container.querySelectorAll('[data-action="mark"]').forEach(btn=>{
+    btn.addEventListener('click',function(){manualMark(this.dataset.key,this.dataset.cls,this.dataset.tn);});
+  });
+  container.querySelectorAll('[data-action="undo"]').forEach(btn=>{
+    btn.addEventListener('click',function(){undoMark(this.dataset.key);});
+  });
+}
+
+async function saveNote(input){
+  const noteKey=input.dataset.notekey;const val=input.value.trim();
+  try{
+    if(val){await db.ref('ww1_teacher_notes/'+noteKey).set(val);teacherNotes[noteKey]=val;input.classList.add('has-note');}
+    else{await db.ref('ww1_teacher_notes/'+noteKey).remove();delete teacherNotes[noteKey];input.classList.remove('has-note');}
+    toast('✓ נשמר');
+  }catch(e){toast('שגיאה','#DC2626');}
+}
+
+async function clearNote(noteKey){
+  try{await db.ref('ww1_teacher_notes/'+noteKey).remove();delete teacherNotes[noteKey];render();toast('✓ נמחק','#1F4E79');}
+  catch(e){toast('שגיאה','#DC2626');}
+}
+
+async function manualMark(subKey,cls,tn){
+  const note=prompt('הערה (ריק = ללא):');if(note===null)return;
+  const clsKey=CLS_KEY[cls];const reg=(regs[clsKey]||{})[String(tn)]||{};
+  const sub={taskNum:parseInt(tn),cls,members:(reg.members||[]),link:'',text:note||'',manualMark:true,timestamp:new Date().toLocaleString('he-IL'),grade:null,notes:''};
+  try{
+    await db.ref('ww1_submissions/'+subKey).set(sub);subs[subKey]=sub;
+    const noteKey=CLS_KEY[cls]+'_'+tn;
+    await db.ref('ww1_teacher_notes/'+noteKey).remove();delete teacherNotes[noteKey];
+    render();toast('✅ סומן כהוגש');
+  }catch(e){toast('שגיאה: '+e.message,'#DC2626');}
+}
+
+async function undoMark(subKey){
+  if(!confirm('לבטל?'))return;
+  try{await db.ref('ww1_submissions/'+subKey).remove();delete subs[subKey];render();toast('↩ בוטל','#1F4E79');}
+  catch(e){toast('שגיאה','#DC2626');}
+}
+
+// ── GRADES ──────────────────────────────────────────────────────────────────
+function gradeColor(g){
+  if(g>=88) return {bg:'#D1FAE5',color:'#065F46'};
+  if(g>=80) return {bg:'#EDE9FE',color:'#5B21B6'};
+  if(g>=70) return {bg:'#FEF3C7',color:'#92400E'};
+  return {bg:'#FEE2E2',color:'#DC2626'};
+}
+
+function renderGradesCls(cls){
+  if(cls==='all'){renderRubric();return;}
+  const clsKey=CLS_KEY[cls];
+  const el=document.getElementById('grades-'+clsKey);
+  if(!el)return;
+
+  // Collect zero-grade rows from teacher notes (notes containing "0")
+  const zeroRows=[];
+  Object.entries(teacherNotes).forEach(([key, note]) => {
+    if(!key.startsWith(clsKey+'_')) return;
+    const tn = key.replace(clsKey+'_','');
+    // Check if note contains a standalone 0 (ציון 0)
+    if(/(?:^|\s|ציון\s*)0(?:\s|$|\b)/.test(note) || note.trim()==='0') {
+      const taskNum=parseInt(tn);
+      const taskName=TASKS[taskNum]||'מטלה '+tn;
+      // Find registration to get names
+      const reg=(regs[clsKey]||{})[String(tn)]||{};
+      const members=(reg.members||[]).map(m=>m.name).join(', ');
+      zeroRows.push({topic:taskName,names:members,grade:0,note:'לא הגישו את המטלה',tn});
+    }
+  });
+
+  const data=GRADES_DATA[clsKey]||[];
+  const allData=[...data,...zeroRows];
+  if(!allData.length){el.innerHTML='<div style="padding:2rem;color:#aaa;text-align:center">אין ציונים לכיתה זו</div>';return;}
+
+  // Average only non-zero grades
+  const gradedData=allData.filter(d=>d.grade>0);
+  const avg=gradedData.length?(gradedData.reduce((a,b)=>a+b.grade,0)/gradedData.length).toFixed(1):'—';
+  const top=gradedData.length?gradedData.reduce((a,b)=>b.grade>a.grade?b:a):null;
+
+  let html=`<div class="stats-bar" style="margin-top:8px">
+    <span class="stat-pill pill-all">${allData.length} עבודות</span>
+    <span class="stat-pill pill-avg">ממוצע: ${avg}</span>
+    ${top?`<span class="stat-pill" style="background:#D1FAE5;color:#065F46">🏆 ${top.grade} – ${top.topic}</span>`:''}
+    ${zeroRows.length?`<span class="stat-pill" style="background:#FEE2E2;color:#DC2626">❌ לא הגישו: ${zeroRows.length}</span>`:''}
+  </div>
+  <table>
+    <thead><tr><th>נושא</th><th>תלמידים</th><th>ציון</th><th>משוב מילולי</th></tr></thead>
+    <tbody>`;
+
+  // Sort: non-zero by grade desc, then zeros at bottom
+  const sorted=[...[...data].sort((a,b)=>b.grade-a.grade),...zeroRows];
+  sorted.forEach(d=>{
+    const c=gradeColor(d.grade);
+    html+=`<tr>
+      <td class="task-name">${d.topic}</td>
+      <td class="members">${d.names||'—'}</td>
+      <td><span class="grade-badge" style="background:${c.bg};color:${c.color}">${d.grade}</span></td>
+      <td class="note-cell">${d.note}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table>`;
+  el.innerHTML=html;
+}
+
+function renderRubric(){
+  const el=document.getElementById('grades-all');
+  el.innerHTML=`<div class="rubric-box">
+    <div style="font-size:13px;font-weight:700;color:#1F4E79;margin-bottom:8px">📐 מחוון בדיקת מטלות – מלחמת העולם הראשונה</div>
+    <div class="rubric-row"><span>תוכן ועובדות (כיסוי כל נושאי המטלה)</span><span style="font-weight:700">40 נק׳</span></div>
+    <div class="rubric-row"><span>ניתוח וחשיבה (הסבר, קשרים, פרשנות)</span><span style="font-weight:700">30 נק׳</span></div>
+    <div class="rubric-row"><span>עמדה ביקורתית (נימוק אישי מבוסס)</span><span style="font-weight:700">20 נק׳</span></div>
+    <div class="rubric-row"><span>מקורות מידע (ציון, מגוון, אמינות)</span><span style="font-weight:700">10 נק׳</span></div>
+    <div class="rubric-row" style="font-weight:700;color:#1F4E79"><span>סה״כ</span><span>100 נק׳</span></div>
+  </div>
+  <div class="rubric-box">
+    <div style="font-size:12px;font-weight:700;color:#1F4E79;margin-bottom:8px">📊 סולם ציונים</div>
+    <div class="rubric-row"><span style="color:#065F46;font-weight:700">90–100</span><span>מצטיין – עבודה ברמה גבוהה מאוד</span></div>
+    <div class="rubric-row"><span style="color:#5B21B6;font-weight:700">80–89</span><span>טוב מאוד – כיסוי מלא עם ניתוח ביקורתי</span></div>
+    <div class="rubric-row"><span style="color:#92400E;font-weight:700">70–79</span><span>טוב – חסרים מרכיבים מסוימים</span></div>
+    <div class="rubric-row"><span style="color:#DC2626;font-weight:700">מתחת ל-70</span><span>השלמה נדרשת</span></div>
+  </div>`;
+}
+</script>
+</body>
+</html>
